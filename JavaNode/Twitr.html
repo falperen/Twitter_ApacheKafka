@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<head>
+<style>
+body {
+  background-color: lightblue;
+}
+
+h1 {
+  color: white;
+  text-align: center;
+}
+
+p {
+  font-family: verdana;
+  font-size: 20px;
+}
+</style>
+</head>
+<body onunload="exitFunction()">
+
+<h1>Twitter</h1>
+<p>This is a paragraph.</p>
+<p id="demo"class="w3-container"></p>
+
+<script>
+//new EventSource('http://localhost:7000/sse/{"Location":"", "Tags":[],"Mentions":[]}/').
+var url = 'http://localhost:7000/sse/{"Location":"", "Tags":[],"Mentions":[]}/';
+eventSrc = new EventSource(url);
+	eventSrc.addEventListener('hi', msg =>{
+			var div = document.getElementById("demo");
+            while(div.hasChildNodes()){
+            div.removeChild(div.firstChild);
+             }
+		    var obj = JSON.parse(msg.data);
+			for (var i = 0; i <obj.length; i++) {
+			var obj1 = obj[i];
+			console.log(div.hasChildNodes());
+			var myJSON = obj1.Authors.italics() + "</br>" + obj1.Content;
+	       var text = "</br>";
+		   if(obj1.Tags[0].localeCompare("")){for(t in obj1.Tags){text += "#" + obj1.Tags[t] + " " };}
+	       if(obj1.Mentions[0].localeCompare("")){for(m in obj1.Mentions){text += "@" + obj1.Mentions[m] + " " };}
+	       myJSON += text + "</br>" + obj1.Location.toUpperCase()+ " " + timeConverter(obj1.Time) + "<hr>" ;
+		   document.getElementById("demo").innerHTML += myJSON 
+          }
+		  
+	 
+		  	
+});
+function timeConverter(UNIX_timestamp){
+  var a = new Date(UNIX_timestamp * 1000);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var year = a.getFullYear();
+  var month = months[a.getMonth()];
+  var date = a.getDate();
+  var hour = a.getHours();
+  var min = a.getMinutes();
+  var sec = a.getSeconds();
+  var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+  return time;
+}
+function exitFunction(){
+
+	eventSrc.removeEventListener('hi',arguments.callee);
+}
+</script>
+
+</body>
+</html>
