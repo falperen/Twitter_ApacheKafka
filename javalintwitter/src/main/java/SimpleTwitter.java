@@ -70,9 +70,9 @@ public class SimpleTwitter {
 
                 // create a producer record
                 ProducerRecord<String, String> record =
-                        new ProducerRecord<String, String>(topic, (twt.getLocation()).isEmpty() +"_"+ (twt.getTags()).isEmpty() +"_"+(twt.getMentions()).isEmpty(), ctx.body());
+                        new ProducerRecord<String, String>(topic, (twt.getLocation()) +"_"+ (twt.getTags()).isEmpty() +"_"+(twt.getMentions()).isEmpty(), ctx.body());
 
-                System.out.println("post:  " + (twt.getLocation()).isEmpty() +"_"+ (twt.getTags()).isEmpty() +"_"+(twt.getMentions()).isEmpty());
+                System.out.println("post:  " + (twt.getLocation()) +"_"+ (twt.getTags()).isEmpty() +"_"+(twt.getMentions()).isEmpty());
 
                 // send data - asynchronous
                 producer.send(record, new Callback() {
