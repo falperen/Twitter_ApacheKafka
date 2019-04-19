@@ -30,10 +30,10 @@ public class SimpleTwitter {
         String topic = "test2_topic";
 
         int numPartitions=8;
-        String x = "Milano";
+        String x = "İzmir";
         byte[] m = x.getBytes();
         int y = Utils.toPositive(Utils.murmur2(m)) % numPartitions;
-        System.out.println("Offset=" + y);
+        System.out.println("Partition=" + y);
 
         ArrayList<TopicPartition> topicAssignment = new ArrayList<TopicPartition>();
 
@@ -51,7 +51,7 @@ public class SimpleTwitter {
         properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        Javalin app = Javalin.create().start(7000);
+        Javalin app = Javalin.create().enableCorsForAllOrigins().start(7000);
 
         app.post("/users/:name", ctx -> {
             User user = new User(ctx.pathParam("name"));
@@ -70,7 +70,9 @@ public class SimpleTwitter {
 
                 // create a producer record
                 ProducerRecord<String, String> record =
-                        new ProducerRecord<String, String>(topic, tweet.getLocation(), ctx.body());
+                        new ProducerRecord<String, String>(topic, (twt.getLocation()).isEmpty() +"_"+ (twt.getTags()).isEmpty() +"_"+(twt.getMentions()).isEmpty(), ctx.body());
+
+                System.out.println("post:  " + (twt.getLocation()).isEmpty() +"_"+ (twt.getTags()).isEmpty() +"_"+(twt.getMentions()).isEmpty());
 
                 // send data - asynchronous
                 producer.send(record, new Callback() {
@@ -101,19 +103,41 @@ public class SimpleTwitter {
         });
 
         app.get("/tweets/*/latest", ctx -> {
-
+            System.out.println("getteyiz");
             if (userList.size() > 0) {
-
                 int noRecordsCount = 0;
                 int giveUp = 2;
                 ArrayList<Tweet> finalToSend = new ArrayList<Tweet>();
+                System.out.println("filter1:  " + ctx.splat(0));
 
+                FilterClass filt =  new Gson().fromJson(ctx.splat(0),FilterClass.class);
+                FilterClassBoolean filterClassBoolean = new FilterClassBoolean(filt);
+                System.out.println("filter2:  " + filterClassBoolean.toString());
                 User ercan = userList.get(userList.size() - 1);
                 KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(ercan.getProperties());
-                TopicPartition topicPartition = new TopicPartition(topic, 6);
-                List<TopicPartition> topics = Arrays.asList(topicPartition);
-                consumer.assign(topics);
 
+                if(!filterClassBoolean.isFilterEmpty()) {
+                    byte[] n = filterClassBoolean.toString().getBytes();
+                    int partn = Utils.toPositive(Utils.murmur2(n)) % numPartitions;
+
+                    TopicPartition topicPartition = new TopicPartition(topic, partn);
+                    List<TopicPartition> topics = Arrays.asList(topicPartition);
+                    consumer.assign(topics);
+                }
+                else{
+                    TopicPartition topicPartition0 = new TopicPartition(topic, 0);
+                    TopicPartition topicPartition1 = new TopicPartition(topic, 1);
+                    TopicPartition topicPartition2 = new TopicPartition(topic, 2);
+                    TopicPartition topicPartition3 = new TopicPartition(topic, 3);
+                    TopicPartition topicPartition4 = new TopicPartition(topic, 4);
+                    TopicPartition topicPartition5 = new TopicPartition(topic, 5);
+                    TopicPartition topicPartition6 = new TopicPartition(topic, 6);
+                    TopicPartition topicPartition7 = new TopicPartition(topic, 7);
+
+                    List<TopicPartition> topics = Arrays.asList(topicPartition0,topicPartition1,topicPartition2,topicPartition3,topicPartition4,topicPartition5,topicPartition6,topicPartition7);
+                    consumer.assign(topics);
+
+                }
                 Runtime.getRuntime().addShutdownHook(new Thread() {
                     public void run() {
                         consumer.wakeup();
@@ -123,10 +147,33 @@ public class SimpleTwitter {
                     while (true) {
                         ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100)); // new in Kafka 2.0.0
                         System.out.println(records.count());
-
                         for (ConsumerRecord<String, String> record : records) {
                             logger.info("Key: " + record.key() + ", Value: " + record.value());
                             logger.info("Partition: " + record.partition() + ", Offset:" + record.offset());
+
+                            Tweet twt = new Gson().fromJson(record.value(), Tweet.class);
+
+                            if (twt.getLocation().equals(filt.getLocation()) || filt.getLocation().isEmpty()) {
+                                if (!finalToSend.contains(twt)) {
+                                    finalToSend.add(twt);
+                                }
+                            }
+                            for (int i = 0; i < filt.getTags().size(); i++) {
+                                if (twt.getTags().contains(filt.getTags().get(i))) {
+                                    if (!finalToSend.contains(twt)) {
+                                        finalToSend.add(twt);
+                                    }
+                                }
+                            }
+                            for (int i = 0; i < filt.getMentions().size(); i++) {
+                                if (twt.getMentions().contains(filt.getMentions().get(i))) {
+                                    if (!finalToSend.contains(twt)) {
+                                        finalToSend.add(twt);
+                                    }
+                                }
+                            }
+                            System.out.println((twt.getLocation()).isEmpty() +"_"+ (twt.getTags()).isEmpty() +"_"+(twt.getMentions()).isEmpty());
+
                         }
 
                         if ((records.count()==0)){
